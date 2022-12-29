@@ -2,12 +2,18 @@ import React, { useState } from "react";
 import Editor, { Monaco } from "@monaco-editor/react";
 import { Box, Typography } from "@mui/material";
 import RunButton from "./RunButton";
+import "./App.css";
 import * as monaco from "monaco-editor";
 
+const defaultCode = `// This area is uneditable
+console.log("But this part is");
+// But this other part isn't`;
+
 function App() {
-  const [content, setContent] = useState<string | undefined>(
-    "for(let i = 0; i < 10; i++) console.log(Math.random());"
-  );
+  const [editor, setEditor] = useState<
+    monaco.editor.IStandaloneCodeEditor | undefined
+  >();
+  const [content, setContent] = useState<string>(defaultCode);
   const [output, setOutput] = useState("");
   const run = () => {
     setOutput("");
@@ -40,10 +46,37 @@ self.postMessage({type: "terminate"})`;
     };
   };
 
+  const onChange = (
+    value: string | undefined,
+    ev: monaco.editor.IModelContentChangedEvent
+  ) => {
+    setContent(value ?? "");
+  };
+
   const onMount = (
     editor: monaco.editor.IStandaloneCodeEditor,
     monaco: Monaco
-  ) => {};
+  ) => {
+    setEditor(editor);
+    const dec: monaco.editor.IModelDeltaDecoration = {
+      range: {
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: 999,
+      },
+      options: { className: "noedit" },
+    };
+    const decorations = [dec];
+    editor.getModel()?.deltaDecorations([], decorations);
+    editor.onKeyDown((e) => {
+      const pos = editor.getPosition();
+      if (!pos) return;
+      if (pos.lineNumber !== 1) return;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  };
 
   return (
     <Box
@@ -54,9 +87,9 @@ self.postMessage({type: "terminate"})`;
       }}
     >
       <Editor
-        onMount={onMount}
         value={content}
-        onChange={(c) => setContent(c)}
+        onMount={onMount}
+        onChange={onChange}
         options={{ fontSize: 25 }}
         defaultLanguage="javascript"
         theme={"vs-dark"}
